@@ -18,10 +18,15 @@ def second_price_auction(bids):
     """
     bid_values = np.array(bids)
 
+    # We shuffle the order of the bids so that we break ties randomly, rather than
+    # based entirely off in the order of the bids.
+    shuffled_order = np.arange(len(bids))
+    np.random.shuffle(shuffled_order)
+
     # order of bids smallest to largest
-    order = np.argsort(bid_values)
-    winner = order[-1]
-    second = bid_values[order[-2]]
+    order = np.argsort(bid_values[shuffled_order])
+    winner = shuffled_order[order[-1]]
+    second = bid_values[shuffled_order[order[-2]]]
     return winner, second
 
     # bid_values_np = np.array(bid_values)
