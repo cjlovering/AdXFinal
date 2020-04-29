@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 
-def second_price_auction(buckets):
+def second_price_auction(bids):
     """
     input:
         bids: array of floats corresponding to each player's bids for the auction
@@ -16,40 +16,13 @@ def second_price_auction(buckets):
         winning_bidder: index of highest value from bids. if no one bids it is randomly allotted!!!
         price_to_pay: second highest bid
     """
-    # Each agent makes a bid w.r.t. each campaign.
-    # list[campaign -> bid]
-    bid_values = list(
-        itertools.chain.from_iterable(bucket.values() for bucket in buckets)
-    )
-    agent_ids = list(
-        itertools.chain.from_iterable(
-            [i] * len(bucket.values()) for i, bucket in enumerate(buckets)
-        )
-    )
+    bid_values = np.array(bids)
+
     # order of bids smallest to largest
     order = np.argsort(bid_values)
-    winner = agent_ids[order[-1]]
+    winner = order[-1]
     second = bid_values[order[-2]]
     return winner, second
-
-    # assert all([bid >= 0 for bid in bid_values])
-
-    # first = 0
-    # second = 0
-    # winner = random.randint(0, len(bids))
-
-    # for index, bid_map in enumerate(bids):
-    #     # let's assume that agent's don't compete with themselves
-    #     # e.g. for different campaigns have different bids which end
-    #     # up being the highest and second highest price.
-    #     biggest = max(bid_map.values())
-    #     if biggest > first:
-    #         second = first
-    #         first = biggest
-    #         winner = index
-    #     elif biggest > second:
-    #         second = biggest
-    # return winner, second
 
     # bid_values_np = np.array(bid_values)
 

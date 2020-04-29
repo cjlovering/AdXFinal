@@ -37,16 +37,17 @@ class BidBucket:
         self.campaign_to_limit = campaign_to_limit
 
     def bid(self, user):
-        campaign_to_bid = {}
+        # We assume that an agent does not provide competition for itself,
+        # and if its overlapping campaigns (eventually market segments)
+        # both would place bids on a user, it would prefer the higher bid.
+        bid = 0
         for campaign in self.user.active_campaigns:
             if (
                 campaign.matches_user(user)
                 and campaign.cost < self.campaign_to_limit[campaign]
             ):
-                campaign_to_bid[campaign] = self.campaign_to_bid[campaign]
-            else:
-                campaign_to_bid[campaign] = 0.0
-        return campaign_to_bid
+                bid = max(self.campaign_to_bid[campaign], bid)
+        return bid
 
 
 class RandomAgent(Agent):
@@ -72,7 +73,7 @@ class RandomAgent(Agent):
         for campaign in self.active_campaigns:
             campaign_to_bid[campaign] = random.random()
             campaign_to_limit[campaign] = campaign.budget
-        # TODO: You can limit both the sub-campaigns and the sup-campaigns.
+        # TODO: We should limit both the sub-campaigns and the sup-campaigns.
         return BidBucket(self, campaign_to_bid, campaign_to_limit)
 
 
@@ -86,5 +87,5 @@ class Tier1Agent(Agent):
         for campaign in self.active_campaigns:
             campaign_to_bid[campaign] = campaign.budget / campaign.reach
             campaign_to_limit[campaign] = campaign.budget
-        # TODO: You can limit both the sub-campaigns and the sup-campaigns.
+        # TODO: We should limit both the sub-campaigns and the sup-campaigns.
         return BidBucket(self, campaign_to_bid, campaign_to_limit)
