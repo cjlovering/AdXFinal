@@ -171,8 +171,9 @@ def run_1_day(agents):
     bid_buckets = [agent.bid_on_campaigns() for agent in agents]
     for user in sample_users(campaigns, num_users=10_000):
         bids = [bucket.bid(user) for bucket in bid_buckets]
+        print(bids)
         winning_agent_idx, price = second_price_auction(bids)
-        agents[winning_agent_idx].update_campaign(user, price)
+        agents[winning_agent_idx].update_campaign(user, price, bid_buckets[winning_agent_idx])
 
     for a in agents:
         a.end_of_day(0)
@@ -189,12 +190,13 @@ def run_multi_day(agents, last_day = 9):
                 agent.add_campaign(generate_campaign(current_day, last_day))
         else:
             campaigns_up_for_bid = [generate_campaign(current_day, last_day) for i in range(0, 5)]
+            bid_buckets = [agent.bid_on_new_campaigns(campaigns_up_for_bid) for agent in agents]
             for campaign in campaigns_up_for_bid:
-                bids = [agent.bid_on_new_campaign(campaign) for agent in agents]
+                bids = [bucket.campaign_to_bid[campaign] for bucket in bid_buckets]
                 quality_scores = [agent.quality_score for agent in agents]
                 winning_agent_idx, budget = reverse_auction(bids, quality_scores, campaign.reach)
                 campaign.budget = budget
-                agents[winning_agent_idx].active_campaigns.append(campaign)
+                agents[winning_agent_idx].add_campaign(campaign)
 
         bid_buckets = [agent.bid_on_campaigns() for agent in agents]
         for user in sample_users(campaigns, num_users=10_000):
@@ -210,14 +212,14 @@ def run_multi_day(agents, last_day = 9):
                 print(a.name, a.profit)'''
     assert sum([len(a.active_campaigns) for a in agents]) == 0, "No unresolved campaigns at auction close"
     #return data in tidy form
-    for agent in agents:
-        print(agent.name, agent.profit, agent.stats["profit"])
+    #for agent in agents:
+    #    print(agent.name, agent.profit, agent.stats["profit"])
     return [{"name": agent.name, **agent.stats} for agent in agents]
 
 if __name__ == "__main__":
     agents = get_all_random()
     output = pd.DataFrame(
-        itertools.chain.from_iterable([run_1_day(agents) for _ in range(1000)])
+        itertools.chain.from_iterable([run_1_day(agents) for _ in range(10)])
     )
     output.to_csv("1_day_1_campaign.csv", index=False)
     display = output[["name", "profit"]]

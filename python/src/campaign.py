@@ -63,6 +63,10 @@ class Campaign(object):
             self.reach,
             self.matching_impressions,
         )
+    def toSegment(self):
+        return Segment(attr_gender=self.attr_gender,
+                       attr_income=self.attr_income,
+                       attr_age=self.attr_age)
 
 
 class User(object):
@@ -73,6 +77,25 @@ class User(object):
 
     def tostr(self):
         return "User {}_{}_{}".format(self.attr_gender, self.attr_age, self.attr_income)
+
+class Segment(object):
+    def __init__(self, attr_gender=None, attr_income=None, attr_age=None):
+        self.attr_gender = attr_gender
+        self.attr_age = attr_age
+        self.attr_income = attr_income
+
+    def matches_user(self, user):
+        if (
+            (self.attr_gender is None or self.attr_gender == user.attr_gender)
+            and (self.attr_income is None or self.attr_income == user.attr_income)
+            and (self.attr_age is None or self.attr_age == user.attr_age)
+        ):
+            return True
+        else:
+            return False
+
+    def tostr(self):
+        return "Segment {}_{}_{}".format(self.attr_gender, self.attr_age, self.attr_income)
 
 
 campaigns = []
@@ -128,5 +151,62 @@ campaigns.append(
 campaigns.append(
     Campaign(
         average_users=1980, attr_gender="Female", attr_age="Young", attr_income="Low"
+    )
+)
+
+
+segments = []
+segments.append(Segment(attr_gender="Male"))
+segments.append(Segment(attr_gender="Female"))
+segments.append(Segment(attr_age="Young"))
+segments.append(Segment(attr_age="Old"))
+segments.append(Segment(attr_income="High"))
+segments.append(Segment(attr_income="Low"))
+segments.append(Segment(attr_gender="Male", attr_age="Old"))
+segments.append(Segment(attr_gender="Male", attr_age="Young"))
+segments.append(Segment(attr_gender="Male", attr_income="High"))
+segments.append(Segment(attr_gender="Male", attr_income="Low"))
+segments.append(Segment(attr_gender="Female", attr_age="Old"))
+segments.append(Segment(attr_gender="Female", attr_age="Young"))
+segments.append(Segment(attr_gender="Female", attr_income="High"))
+segments.append(Segment(attr_gender="Female", attr_income="Low"))
+segments.append(Segment(attr_age="Old", attr_income="High"))
+segments.append(Segment(attr_age="Old", attr_income="Low"))
+segments.append(Segment(attr_age="Young", attr_income="High"))
+segments.append(Segment(attr_age="Young", attr_income="Low"))
+segments.append(
+    Segment(attr_gender="Male", attr_age="Old", attr_income="High")
+)
+segments.append(
+    Segment(attr_gender="Male", attr_age="Old", attr_income="Low")
+)
+segments.append(
+    Segment(
+        attr_gender="Male", attr_age="Young", attr_income="High"
+    )
+)
+segments.append(
+    Segment(
+        attr_gender="Male", attr_age="Young", attr_income="Low"
+    )
+)
+segments.append(
+    Segment(
+        attr_gender="Female", attr_age="Old", attr_income="High"
+    )
+)
+segments.append(
+    Segment(
+        attr_gender="Female", attr_age="Old", attr_income="Low"
+    )
+)
+segments.append(
+    Segment(
+        attr_gender="Female", attr_age="Young", attr_income="High"
+    )
+)
+segments.append(
+    Segment(
+        attr_gender="Female", attr_age="Young", attr_income="Low"
     )
 )
