@@ -41,7 +41,7 @@ class Campaign(object):
 		return (2/ a) * (np.arctan(a * ( self.matching_impressions/ self.reach) - b)- np.arctan(-b))
 
 	def tostr(self):
-		return "Campaign with market segment {}_{}_{}:\n\tbudget {}\n\treach {}\n\t\tcurrently reached {}".format(self.attr_gender,self.attr_age,self.attr_income,self.budget,self.reach,self.matching_impressions)
+		return "Campaign with market segment {}_{}_{}:\n\tstart date {}\n\tlength {}\n\tbudget {}\n\treach {}\n\t\tcurrently reached {}".format(self.attr_gender,self.attr_age,self.attr_income,self.start_day, self.length, self.budget,self.reach,self.matching_impressions)
 
 
 

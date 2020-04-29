@@ -5,6 +5,7 @@ class Agent(object):
 		self.active_campaigns = []
 		self.profit = 0
 		self.name = name
+		self.quality_score = 1
 
 	def add_campaign(self, campaign):
 		self.active_campaigns.append(campaign)
@@ -18,11 +19,22 @@ class Agent(object):
 					assigned_price = True
 					campaign.cost += price
 
-	def calculate_profit(self):
+	def end_of_day(self, day, quality_score_alpha = .5):
+		keep = []
 		for campaign in self.active_campaigns:
-			#TODO: Multi-day: only execute this if the campaign is over
-			self.profit += (campaign.budget * campaign.effective_reach() - campaign.cost)
-			self.active_campaigns.remove(campaign)
+			if day == campaign.start_day + campaign.length:
+				#TODO: Multi-day: only execute this if the campaign is over
+				self.profit += (campaign.budget * campaign.effective_reach() - campaign.cost)
+				self.quality_score = (1 - quality_score_alpha) + quality_score_alpha * campaign.effective_reach()
+				keep.append(False)
+			else:
+				assert day < campaign.start_day + campaign.length
+				keep.append(True)
+		updated_campaigns = []
+		for i, campaign_continues in enumerate(keep):
+			if campaign_continues == True:
+				updated_campaigns.append(self.active_campaigns[i])
+		self.active_campaigns = updated_campaigns
 
 class RandomAgent(Agent):
 	def __init__(self, name):
@@ -37,3 +49,6 @@ class RandomAgent(Agent):
 		if relevant == True:
 			bid = random.random()
 		return bid
+
+	def get_bid_for_campaign(self, campaign):
+		return random.uniform(0.1 * campaign.reach, campaign.reach)
