@@ -47,6 +47,7 @@ class Campaign(object):
             return False
 
     def effective_reach(self):
+        # return min(self.matching_impressions, self.reach) / self.reach
         a = 4.08577
         b = 3.08577
         return (2 / a) * (

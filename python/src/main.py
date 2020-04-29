@@ -52,18 +52,39 @@ def second_price_auction(bids):
     #         return winning_bidder, price_to_pay
 
 
-def sample_user(campaigns):
+# def sample_user(campaigns):
+#     user_demographics = [c for c in campaigns if c.count_attrs == 3]
+#     user_distribution = [c.average_users for c in user_demographics]
+#     sum_users = sum(user_distribution)
+#     user_distribution = [i * 1.0 / sum_users for i in user_distribution]
+#     chosen_demographic = random.choices(user_demographics, weights=user_distribution)[0]
+#     user = User(
+#         attr_gender=chosen_demographic.attr_gender,
+#         attr_age=chosen_demographic.attr_age,
+#         attr_income=chosen_demographic.attr_income,
+#     )
+#     return user
+
+
+def sample_users(campaigns, num_users):
+    # Sample all users for the day.
     user_demographics = [c for c in campaigns if c.count_attrs == 3]
     user_distribution = [c.average_users for c in user_demographics]
     sum_users = sum(user_distribution)
+    assert sum_users == 10_000, "double checking"
     user_distribution = [i * 1.0 / sum_users for i in user_distribution]
-    chosen_demographic = random.choices(user_demographics, weights=user_distribution)[0]
-    user = User(
-        attr_gender=chosen_demographic.attr_gender,
-        attr_age=chosen_demographic.attr_age,
-        attr_income=chosen_demographic.attr_income,
+    chosen_demographics = random.choices(
+        user_demographics, weights=user_distribution, k=num_users
     )
-    return user
+    users = [
+        User(
+            attr_gender=chosen_demographic.attr_gender,
+            attr_age=chosen_demographic.attr_age,
+            attr_income=chosen_demographic.attr_income,
+        )
+        for chosen_demographic in chosen_demographics
+    ]
+    return users
 
 
 def generate_campaign(first_day=False):
@@ -111,21 +132,13 @@ def run_1_day(agents):
         agent.add_campaign(generate_campaign(first_day=True))
 
     bid_buckets = [agent.bid_on_campaigns() for agent in agents]
-    for _ in range(0, 10000):
-        user = sample_user(campaigns)
+    for user in sample_users(campaigns, num_users=10_000):
         bids = [bucket.bid(user) for bucket in bid_buckets]
-        # if sum(bids) == 0:
-        # 	print(user.tostr())
-        # 	print([a.active_campaigns[0].matches_user(user) for a in agents])
         winning_agent_idx, price = second_price_auction(bids)
         agents[winning_agent_idx].update_campaign(user, price)
-    # print(sum([a.active_campaigns[0].matching_impressions for a in agents]))
-    # print([a.active_campaigns[0].effective_reach() for a in agents])
+
     for a in agents:
         a.calculate_profit()
-        # print(a.name, a.profit)
-    # best_agent = np.argmax([a.profit for a in agents])
-    # print("{} wins!".format(agents[best_agent].name))
 
     # return data in tidy form.
     return [{"name": agent.name, **agent.stats} for agent in agents]
@@ -134,7 +147,7 @@ def run_1_day(agents):
 if __name__ == "__main__":
     agents = get_one_AgentV0()
     output = pd.DataFrame(
-        itertools.chain.from_iterable([run_1_day(agents) for _ in range(100)])
+        itertools.chain.from_iterable([run_1_day(agents) for _ in range(1000)])
     )
     output.to_csv("1_day_1_campaign.csv", index=False)
     display = output[["name", "profit"]]
