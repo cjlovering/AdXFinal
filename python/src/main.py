@@ -82,24 +82,24 @@ def generate_campaign(first_day=False):
 
 
 def get_all_random():
-    agents = [RandomAgent("RandomAgent{}".format(i)) for i in range(0, 10)]
+    agents = [RandomAgent("RandomAgent_{}".format(i)) for i in range(0, 10)]
     return agents
 
 
 def get_one_tier1():
-    agents = [RandomAgent("RandomAgent{}".format(i)) for i in range(0, 9)] + [
-        Tier1Agent("Tier1Agent 1")
+    agents = [RandomAgent("RandomAgent_{}".format(i)) for i in range(0, 9)] + [
+        Tier1Agent("Tier1Agent_1")
     ]
     return agents
 
 
 def get_all_tier1():
-    agents = [Tier1Agent("Tier1Agent {}".format(i)) for i in range(0, 10)]
+    agents = [Tier1Agent("Tier1Agent_{}".format(i)) for i in range(0, 10)]
     return agents
 
 
 def get_one_AgentV0():
-    agents = [Tier1Agent("Tier1Agent {}".format(i)) for i in range(0, 9)] + [
+    agents = [Tier1Agent("Tier1Agent_{}".format(i)) for i in range(0, 9)] + [
         AgentV0("AgentV0")
     ]
     return agents
@@ -127,11 +127,16 @@ def run_1_day(agents):
     # best_agent = np.argmax([a.profit for a in agents])
     # print("{} wins!".format(agents[best_agent].name))
 
-    return {a.name: a.profit for a in agents}
+    # return data in tidy form.
+    return [{"name": agent.name, **agent.stats} for agent in agents]
 
 
 if __name__ == "__main__":
     agents = get_one_AgentV0()
-    output = pd.DataFrame([run_1_day(agents) for _ in range(100)])
-    # print out agents by order of average
-    print(output.reindex(output.mean().sort_values().index, axis=1).mean())
+    output = pd.DataFrame(
+        itertools.chain.from_iterable([run_1_day(agents) for _ in range(100)])
+    )
+    output.to_csv("1_day_1_campaign.csv", index=False)
+    display = output[["name", "profit"]]
+    profits = display.groupby("name").mean()
+    print(profits)

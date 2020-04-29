@@ -1,15 +1,19 @@
+import math
 import random
-from collections import defaultdict
 
 
 class Agent(object):
     def __init__(self, name):
         self.active_campaigns = []
         self.profit = 0
+        self.stats = {"cost": 0, "revenue": 0, "profit": 0, "budget": 0, "reach": 0}
+
         self.name = name
 
     def reset(self):
         self.active_campaigns = []
+        self.stats = {"cost": 0, "revenue": 0, "profit": 0, "budget": 0, "reach": 0}
+
         self.profit = 0
 
     def add_campaign(self, campaign):
@@ -21,12 +25,24 @@ class Agent(object):
                 campaign.matching_impressions += 1
                 campaign.cost += price
                 # To prevent us from double counting costs
-                break
-        assert False, "Impossible. IF you buy, you pay."
+                return
+        if price > 0:
+            # free loader user is fine.
+            assert False, "Impossible. If you buy, you pay."
 
     def calculate_profit(self):
         for campaign in self.active_campaigns:
             # TODO: Multi-day: only execute this if the campaign is over
+
+            # Track stats.
+            self.stats["cost"] += campaign.cost
+            self.stats["revenue"] += campaign.budget * campaign.effective_reach()
+            self.stats["profit"] += (
+                campaign.budget * campaign.effective_reach() - campaign.cost
+            )
+            self.stats["budget"] += campaign.budget
+            self.stats["reach"] += campaign.reach
+
             self.profit += campaign.budget * campaign.effective_reach() - campaign.cost
             self.active_campaigns.remove(campaign)
 
@@ -69,8 +85,8 @@ class RandomAgent(Agent):
         return bid
 
     def bid_on_campaigns(self):
-        campaign_to_bid = defaultdict(float)
-        campaign_to_limit = defaultdict(float)
+        campaign_to_bid = {}
+        campaign_to_limit = {}
         for campaign in self.active_campaigns:
             campaign_to_bid[campaign] = random.random()
             campaign_to_limit[campaign] = campaign.budget
@@ -83,10 +99,10 @@ class Tier1Agent(Agent):
         super(Tier1Agent, self).__init__(name)
 
     def bid_on_campaigns(self):
-        campaign_to_bid = defaultdict(float)
-        campaign_to_limit = defaultdict(float)
+        campaign_to_bid = {}
+        campaign_to_limit = {}
         for campaign in self.active_campaigns:
-            campaign_to_bid[campaign] = campaign.budget / campaign.reach
+            campaign_to_bid[campaign] = max(0.1, campaign.budget / campaign.reach)
             campaign_to_limit[campaign] = campaign.budget
         # TODO: We should limit both the sub-campaigns and the sup-campaigns.
         return BidBucket(self, campaign_to_bid, campaign_to_limit)
@@ -99,11 +115,11 @@ class AgentV0(Agent):
         self.ad_limit_shade = ad_limit_shade
 
     def bid_on_campaigns(self):
-        campaign_to_bid = defaultdict(float)
-        campaign_to_limit = defaultdict(float)
+        campaign_to_bid = {}
+        campaign_to_limit = {}
         for campaign in self.active_campaigns:
-            campaign_to_bid[campaign] = (
-                self.ad_bid_shade * campaign.budget / campaign.reach
+            campaign_to_bid[campaign] = max(
+                0.1, (self.ad_bid_shade * campaign.budget / campaign.reach)
             )
             campaign_to_limit[campaign] = self.ad_limit_shade * campaign.budget
         # TODO: We should limit both the sub-campaigns and the sup-campaigns.

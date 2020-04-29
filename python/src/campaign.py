@@ -19,7 +19,6 @@ class Campaign(object):
         self.start_day = None
         self.matching_impressions = 0
         self.cost = 0
-        self.id = round(random.randint(0, 1_000_000))
 
         assert (
             self.attr_age is not None
