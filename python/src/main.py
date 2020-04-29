@@ -1,7 +1,7 @@
 import itertools
 import copy
 import random
-from agent import RandomAgent, Tier1Agent
+from agent import RandomAgent, Tier1Agent, AgentV0
 from campaign import Campaign, User, campaigns
 import numpy as np
 import pandas as pd
@@ -98,6 +98,13 @@ def get_all_tier1():
     return agents
 
 
+def get_one_AgentV0():
+    agents = [Tier1Agent("Tier1Agent {}".format(i)) for i in range(0, 9)] + [
+        AgentV0("AgentV0")
+    ]
+    return agents
+
+
 def run_1_day(agents):
     for agent in agents:
         agent.reset()
@@ -124,7 +131,7 @@ def run_1_day(agents):
 
 
 if __name__ == "__main__":
-    agents = get_all_tier1()
+    agents = get_one_AgentV0()
     output = pd.DataFrame([run_1_day(agents) for _ in range(100)])
     # print out agents by order of average
     print(output.reindex(output.mean().sort_values().index, axis=1).mean())
