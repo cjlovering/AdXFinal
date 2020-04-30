@@ -15,6 +15,7 @@ def second_price_auction(bids):
     output:
         winning_bidder: index of highest value from bids. if no one bids it is randomly allotted!!!
         price_to_pay: second highest bid
+        stats: dictionary of stats about the auction
     """
     bid_values = np.array(bids)
 
@@ -27,7 +28,23 @@ def second_price_auction(bids):
     order = np.argsort(bid_values[shuffled_order])
     winner = shuffled_order[order[-1]]
     second = bid_values[shuffled_order[order[-2]]]
-    return winner, second
+
+    # computing stats for analysis
+    demand = (bid_values > 0).sum()
+    if demand > 0:
+        _min = bid_values[(bid_values > 0)].min()
+        _max = bid_values[(bid_values > 0)].max()
+        _mean = bid_values[(bid_values > 0)].mean()
+    else:
+        _min, _max, _mean = 0, 0, 0
+    stats = {
+        "demand": demand,
+        "min_bid": _min,
+        "max_bid": _max,
+        "mean_bid": _mean,
+        "price": second,
+    }
+    return winner, second, stats
 
     # bid_values_np = np.array(bid_values)
 
@@ -198,11 +215,13 @@ def run_1_day(agents):
     for agent in agents:
         agent.reset()
         agent.add_campaign(generate_campaign(current_day=0))
-
+    bid_stats = []
     bid_buckets = [agent.report_user_bids() for agent in agents]
     for user in sample_users(campaigns, num_users=10_000):
         bids = [bucket.bid(user) for bucket in bid_buckets]
-        winning_agent_idx, price = second_price_auction(bids)
+        winning_agent_idx, price, stats = second_price_auction(bids)
+        stats["demographic"] = user.demographic()
+        bid_stats.append(stats)
         agents[winning_agent_idx].update_campaign(
             user, price, bid_buckets[winning_agent_idx]
         )
@@ -211,10 +230,12 @@ def run_1_day(agents):
         a.end_of_day(0)
 
     # return data in tidy form.
-    return [{"name": agent.name, **agent.stats} for agent in agents]
+    return [{"name": agent.name, **agent.stats} for agent in agents], bid_stats
 
 
 def run_multi_day(agents, last_day=9):
+    bid_stats = []
+    bid_stats_dfs = []
     for current_day in range(0, last_day + 1):
         if current_day == 0:
             for agent in agents:
@@ -235,11 +256,13 @@ def run_multi_day(agents, last_day=9):
                 # run both today (day 8 --> 9th day) and tomorrow (day 9 --> 10th day).
                 if current_day + campaign.length <= last_day
             ]
-            bid_buckets = [
+            campaign_to_bids = [
                 agent.report_campaign_bids(campaigns_up_for_bid) for agent in agents
             ]
             for campaign in campaigns_up_for_bid:
-                bids = [bucket.campaign_to_bid[campaign] for bucket in bid_buckets]
+                bids = [
+                    campaign_to_bid[campaign] for campaign_to_bid in campaign_to_bids
+                ]
                 quality_scores = [agent.quality_score for agent in agents]
                 winning_agent_idx, budget = reverse_auction(
                     bids, quality_scores, campaign.reach
@@ -250,9 +273,17 @@ def run_multi_day(agents, last_day=9):
         bid_buckets = [agent.report_user_bids() for agent in agents]
         for user in sample_users(campaigns, num_users=10_000):
             bids = [bucket.bid(user) for bucket in bid_buckets]
-            winning_agent_idx, price = second_price_auction(bids)
-            agents[winning_agent_idx].update_campaign(user, price)
-
+            winning_agent_idx, price, stats = second_price_auction(bids)
+            stats["demographic"] = user.demographic()
+            stats["day"] = current_day
+            agents[winning_agent_idx].update_campaign(
+                user, price, bid_buckets[winning_agent_idx]
+            )
+            bid_stats.append(stats)
+        # Average
+        bid_stats_dfs.append(
+            pd.DataFrame(bid_stats).groupby(["demographic", "day"]).mean()
+        )
         for a in agents:
             a.end_of_day(current_day)
         """if current_day != last_day:
@@ -265,15 +296,32 @@ def run_multi_day(agents, last_day=9):
     # return data in tidy form
     # for agent in agents:
     #    print(agent.name, agent.profit, agent.stats["profit"])
-    return [{"name": agent.name, **agent.stats} for agent in agents]
+    return [{"name": agent.name, **agent.stats} for agent in agents], bid_stats_dfs
 
 
 if __name__ == "__main__":
-    agents = get_all_random()
-    output = pd.DataFrame(
-        itertools.chain.from_iterable([run_1_day(agents) for _ in range(10)])
-    )
-    output.to_csv("1_day_1_campaign.csv", index=False)
-    display = output[["name", "profit"]]
-    profits = display.groupby("name").mean()
-    print(profits)
+    if False:
+        agents = get_all_random()
+        agent_data, ad_bid_data = zip(*[run_1_day(agents) for _ in range(10)])
+        agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))
+        agent_df.to_csv("agent.csv", index=False)
+        profit_df = agent_df[["name", "profit"]]
+        profit_df = profit_df.groupby("name").mean()
+        print(profit_df)
+
+        ad_bid_df = pd.DataFrame(itertools.chain.from_iterable(ad_bid_data))
+        ad_bid_df.to_csv("bid.csv", index=False)
+        print(ad_bid_df.groupby("demographic").mean())
+        print(ad_bid_df.drop("demographic", axis=1).mean())
+    if True:
+        agents = get_all_random()
+        agent_data, ad_bid_data = zip(*[run_multi_day(agents) for _ in range(10)])
+        agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))
+        agent_df.to_csv("agent.csv", index=False)
+        profit_df = agent_df[["name", "profit"]]
+        profit_df = profit_df.groupby("name").mean()
+        print(profit_df)
+
+        ad_bid_df = pd.concat(itertools.chain.from_iterable(ad_bid_data))
+        ad_bid_df.to_csv("bid.csv", index=False)
+        print(ad_bid_df.groupby("day").mean())

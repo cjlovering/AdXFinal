@@ -136,13 +136,11 @@ class RandomAgent(Agent):
         """Build a BidBucket for new campaigns.
         """
         campaign_to_bid = {}
-        campaign_to_limit = {}
         for campaign in campaigns:
             campaign_to_bid[campaign] = random.uniform(
                 0.1 * campaign.reach, campaign.reach
             )
-            campaign_to_limit = campaign.budget
-        return BidBucket(self, campaign_to_bid, campaign_to_limit)
+        return campaign_to_bid
 
 
 class Tier1Agent(Agent):
