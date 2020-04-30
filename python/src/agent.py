@@ -19,8 +19,8 @@ class Agent(object):
     def add_campaign(self, campaign):
         self.active_campaigns.append(campaign)
 
-    def update_campaign(self,user,price, bucket):
-        assigned_price = False #To prevent us from double counting costs
+    def update_campaign(self, user, price, bucket):
+        assigned_price = False  # To prevent us from double counting costs
         for campaign in self.active_campaigns:
             if campaign.matches_user(user) == True:
                 campaign.matching_impressions += 1
@@ -30,11 +30,11 @@ class Agent(object):
                     if price != 0:
                         bucket.segment_specific_costs[bucket.selected_segment] += price
 
-    def end_of_day(self, day, quality_score_alpha = .5):
+    def end_of_day(self, day, quality_score_alpha=0.5):
         keep = []
         for campaign in self.active_campaigns:
             if day == campaign.start_day + campaign.length:
-                #The campaign is over.
+                # The campaign is over.
                 self.stats["cost"] += campaign.cost
                 self.stats["revenue"] += campaign.budget * campaign.effective_reach()
                 self.stats["profit"] += (
@@ -42,8 +42,12 @@ class Agent(object):
                 )
                 self.stats["budget"] += campaign.budget
                 self.stats["reach"] += campaign.reach
-                self.profit += (campaign.budget * campaign.effective_reach() - campaign.cost)
-                self.quality_score = (1 - quality_score_alpha) + quality_score_alpha * campaign.effective_reach()
+                self.profit += (
+                    campaign.budget * campaign.effective_reach() - campaign.cost
+                )
+                self.quality_score = (
+                    1 - quality_score_alpha
+                ) + quality_score_alpha * campaign.effective_reach()
                 keep.append(False)
             else:
                 assert day < campaign.start_day + campaign.length
@@ -54,7 +58,7 @@ class Agent(object):
                 updated_campaigns.append(self.active_campaigns[i])
         self.active_campaigns = updated_campaigns
 
-    '''def calculate_profit(self):
+    """def calculate_profit(self):
         for campaign in self.active_campaigns:
             # TODO: Multi-day: only execute this if the campaign is over
 
@@ -68,7 +72,7 @@ class Agent(object):
             self.stats["reach"] += campaign.reach
 
             self.profit += campaign.budget * campaign.effective_reach() - campaign.cost
-            self.active_campaigns.remove(campaign)'''
+            self.active_campaigns.remove(campaign)"""
 
 
 class BidBucket:
@@ -78,25 +82,31 @@ class BidBucket:
         self.segment_to_limit = segment_to_limit
         self.per_day_limit = float("inf")
 
-        self.segment_specific_costs = {}
-        for segment in self.segment_to_bid.keys():
-            self.segment_specific_costs[segment] = 0
+        self.segment_specific_costs = {
+            segment: 0 for segment in self.segment_to_bid.keys()
+        }
 
     def bid(self, user):
         # We assume that an agent does not provide competition for itself,
         # and if its overlapping campaigns (eventually market segments)
         # both would place bids on a user, it would prefer the higher bid.
-        total_spent = sum(self.segment_specific_costs[segment] for segment in self.segment_specific_costs.keys())
+        total_spent = sum(
+            self.segment_specific_costs[segment]
+            for segment in self.segment_specific_costs.keys()
+        )
         bid = 0
 
-        #kludgy way to report what segment we're bidding on, so we can assign cost
+        # kludgy way to report what segment we're bidding on, so we can assign cost
         self.selected_segment = None
 
         for segment in self.segment_to_bid.keys():
             bid_for_this_segment = self.segment_to_bid[segment]
             if (
                 segment.matches_user(user)
-                and self.segment_specific_costs[segment] + bid_for_this_segment < self.segment_to_limit[segment]
+                and (
+                    self.segment_specific_costs[segment] + bid_for_this_segment
+                    < self.segment_to_limit[segment]
+                )
                 and total_spent < self.per_day_limit
             ):
                 if bid_for_this_segment > bid:
@@ -109,20 +119,10 @@ class RandomAgent(Agent):
     def __init__(self, name):
         super(RandomAgent, self).__init__(name)
 
-    def bid_on_user(self, user):
-        relevant = False
-        bid = 0
-        for campaign in self.active_campaigns:
-            if (
-                campaign.matches_user(user) == True
-                and campaign.matching_impressions < campaign.reach
-            ):
-                relevant = True
-        if relevant == True:
-            bid = random.random()
-        return bid
-
-    def bid_on_campaigns(self):
+    def report_user_bids(self):
+        """Build a BidBucket for active campaigns, for bids on
+        users throughout the current day.
+        """
         segment_to_bid = {}
         segment_to_limit = {}
         for campaign in self.active_campaigns:
@@ -132,15 +132,16 @@ class RandomAgent(Agent):
         # TODO: We should limit both the sub-campaigns and the sup-campaigns.
         return BidBucket(self, segment_to_bid, segment_to_limit)
 
-    def bid_on_new_campaigns(self, campaigns):
+    def report_campaign_bids(self, campaigns):
+        """Build a BidBucket for new campaigns.
+        """
         campaign_to_bid = {}
         campaign_to_limit = {}
         for campaign in campaigns:
-            campaign_to_bid[campaign] = random.uniform(0.1 * campaign.reach, campaign.reach)
+            campaign_to_bid[campaign] = random.uniform(
+                0.1 * campaign.reach, campaign.reach
+            )
             campaign_to_limit = campaign.budget
-        # TODO: We should limit both the sub-campaigns and the sup-campaigns.
-        # TODO: We should switch the BidBucket to work with marketsegments, not
-        # campaigns.
         return BidBucket(self, campaign_to_bid, campaign_to_limit)
 
 
@@ -148,7 +149,7 @@ class Tier1Agent(Agent):
     def __init__(self, name):
         super(Tier1Agent, self).__init__(name)
 
-    def bid_on_campaigns(self):
+    def report_user_bids(self):
         campaign_to_bid = {}
         campaign_to_limit = {}
         for campaign in self.active_campaigns:
@@ -164,7 +165,7 @@ class AgentV0(Agent):
         self.ad_bid_shade = ad_bid_shade
         self.ad_limit_shade = ad_limit_shade
 
-    def bid_on_campaigns(self):
+    def report_user_bids(self):
         campaign_to_bid = {}
         campaign_to_limit = {}
         for campaign in self.active_campaigns:
