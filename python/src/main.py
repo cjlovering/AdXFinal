@@ -231,13 +231,13 @@ def run_1_day(agents):
     for agent in agents:
         agent.reset()
         agent.add_campaign(generate_campaign(current_day=0))
-    bid_stats = []
+    ad_stats = []
     bid_buckets = [agent.report_user_bids() for agent in agents]
     for user in sample_users(campaigns, num_users=10_000):
         bids = [bucket.bid(user) for bucket in bid_buckets]
         winning_agent_idx, price, stats = second_price_auction(bids)
         stats["demographic"] = user.demographic()
-        bid_stats.append(stats)
+        ad_stats.append(stats)
         agents[winning_agent_idx].update_campaign(
             user, price, bid_buckets[winning_agent_idx]
         )
@@ -246,12 +246,13 @@ def run_1_day(agents):
         a.end_of_day(0)
 
     # return data in tidy form.
-    return [{"name": agent.name, **agent.stats} for agent in agents], bid_stats
+    return [{"name": agent.name, **agent.stats} for agent in agents], ad_stats
 
 
 def run_multi_day(agents, last_day=9):
-    bid_stats = []
-    bid_stats_dfs = []
+    ad_stats = []
+    ad_stats_dfs = []
+    campaign_stats = []
     for current_day in range(0, last_day + 1):
         if current_day == 0:
             for agent in agents:
@@ -283,6 +284,10 @@ def run_multi_day(agents, last_day=9):
                 winning_agent_idx, budget, stats = reverse_auction(
                     bids, quality_scores, campaign.reach
                 )
+                stats["day"] = current_day
+                # currently used by our models.
+                stats["demographic"] = campaign.toSegment().demographic()
+                campaign_stats.append(stats)
                 campaign.budget = budget
                 agents[winning_agent_idx].add_campaign(campaign)
 
@@ -295,10 +300,10 @@ def run_multi_day(agents, last_day=9):
             agents[winning_agent_idx].update_campaign(
                 user, price, bid_buckets[winning_agent_idx]
             )
-            bid_stats.append(stats)
+            ad_stats.append(stats)
         # Average
-        bid_stats_dfs.append(
-            pd.DataFrame(bid_stats)
+        ad_stats_dfs.append(
+            pd.DataFrame(ad_stats)
             .groupby(["demographic", "day"], as_index=False)
             .mean()
         )
@@ -314,7 +319,11 @@ def run_multi_day(agents, last_day=9):
     # return data in tidy form
     # for agent in agents:
     #    print(agent.name, agent.profit, agent.stats["profit"])
-    return [{"name": agent.name, **agent.stats} for agent in agents], bid_stats_dfs
+    return (
+        [{"name": agent.name, **agent.stats} for agent in agents],
+        ad_stats_dfs,
+        campaign_stats,
+    )
 
 
 if __name__ == "__main__":
@@ -334,7 +343,9 @@ if __name__ == "__main__":
 
     if True:
         agents = get_all_tier1()
-        agent_data, ad_bid_data = zip(*[run_multi_day(agents) for _ in range(1000)])
+        agent_data, ad_bid_data, campaign_stats = zip(
+            *[run_multi_day(agents) for _ in range(1000)]
+        )
         agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))
         agent_df.to_csv("agent.csv", index=False)
         profit_df = agent_df[["name", "profit"]]
@@ -344,3 +355,7 @@ if __name__ == "__main__":
         ad_bid_df = pd.concat(itertools.chain.from_iterable(ad_bid_data))
         ad_bid_df.to_csv("bid.csv", index=False)
         print(ad_bid_df.groupby("day").mean())
+
+        campaign_stats_df = pd.DataFrame(itertools.chain.from_iterable(campaign_stats))
+        campaign_stats_df.to_csv("campaign.csv", index=False)
+        print(campaign_stats_df.mean())

@@ -106,6 +106,9 @@ class Segment(object):
             self.attr_gender, self.attr_age, self.attr_income
         )
 
+    def demographic(self):
+        return "{}_{}_{}".format(self.attr_gender, self.attr_age, self.attr_income)
+
 
 campaigns = []
 """campaigns.append(Campaign(attr_gender="Male"))
