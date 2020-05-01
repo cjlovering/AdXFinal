@@ -1,10 +1,13 @@
-import itertools
 import copy
+import itertools
 import random
-from agent import RandomAgent, Tier1Agent, AgentV0
-from campaign import Campaign, User, campaigns
+import tqdm
+
 import numpy as np
 import pandas as pd
+
+from agent import RandomAgent, Tier1Agent, AgentV0
+from campaign import Campaign, User, campaigns
 
 
 def second_price_auction(bids):
@@ -46,33 +49,6 @@ def second_price_auction(bids):
     }
     return winner, second, stats
 
-    # bid_values_np = np.array(bid_values)
-
-    # if (bid_values_np > 0).sum() == 1:
-    #     # We have a single winner.
-    #     return
-
-    # if len(bids) == 1:
-    #     return bids[0], 0
-    # else:
-    #     highest_bid = max(bids)
-    #     all_highest_indices = [i for i, j in enumerate(bids) if j == highest_bid]
-    #     if len(all_highest_indices) > 1:
-    #         winning_bidder = random.choice(all_highest_indices)
-    #         return winning_bidder, highest_bid
-    #     else:
-    #         winning_bidder = bids.index(highest_bid)
-
-    #         new_list = copy.deepcopy(bids)
-
-    #         # removing the largest element from temp list
-    #         new_list.remove(highest_bid)
-    #         # elements in original list are not changed
-    #         # print(list1)
-
-    #         price_to_pay = max(new_list)
-    #         return winning_bidder, price_to_pay
-
 
 def reverse_auction(bids, quality_scores, reach):
     """
@@ -98,21 +74,13 @@ def reverse_auction(bids, quality_scores, reach):
             "q_win": quality_scores[winning_bidder],
             "winning_bid": max_bid,
             "budget": budget,
+            "reach": reach,
         }
         return winning_bidder, budget, stats
     else:
-        # effective_bids = [bids[i] * quality_scores[i] for i in range(0, len(bids))]
-
-        # # this is game logic that prohibits bids below 0.1 * reach.
-        # # for i in range(0, len(effective_bids)):
-        # #     if effective_bids[i] < 0.1 * reach:
-        # #         effective_bids[i] = float("inf")
-        # for i in range(0, len(effective_bids)):
-        #     if effective_bids[i] == 0:
-        #         effective_bids[i] = float("inf")
-
         quality_scores = np.array(quality_scores)
         bids = np.array(bids)
+
         # The bids are then divided by the agents’ respective quality scores to
         # arrive at effective bids, before they are entered into the auction.
         effective_bids = bids / quality_scores
@@ -122,6 +90,7 @@ def reverse_auction(bids, quality_scores, reach):
 
         # Order bid indices smallest to largest
         order = np.argsort(effective_bids[shuffled_order])
+
         # Budget: the second-lowest budget times the winning agent’s quality score
         winner = shuffled_order[order[0]]
         second = shuffled_order[order[1]]
@@ -133,36 +102,9 @@ def reverse_auction(bids, quality_scores, reach):
             "q_win": quality_scores[winner],
             "winning_bid": bids[winner],
             "budget": budget,
+            "reach": reach,
         }
         return winner, budget, stats
-
-    #     lowest_bid = min(effective_bids)
-    #     all_lowest_bidders = [
-    #         i for i, j in enumerate(effective_bids) if j == lowest_bid
-    #     ]
-    #     if len(all_lowest_bidders) > 1:
-    #         winning_bidder = random.choice(all_lowest_bidders)
-    #         budget = lowest_bid
-    #     else:
-    #         winning_bidder = effective_bids.index(lowest_bid)
-    #         new_list = copy.deepcopy(effective_bids)
-    #         new_list.remove(lowest_bid)
-    #         budget = min(new_list) * quality_scores[winning_bidder]
-    # return winning_bidder, budget
-
-
-# def sample_user(campaigns):
-#     user_demographics = [c for c in campaigns if c.count_attrs == 3]
-#     user_distribution = [c.average_users for c in user_demographics]
-#     sum_users = sum(user_distribution)
-#     user_distribution = [i * 1.0 / sum_users for i in user_distribution]
-#     chosen_demographic = random.choices(user_demographics, weights=user_distribution)[0]
-#     user = User(
-#         attr_gender=chosen_demographic.attr_gender,
-#         attr_age=chosen_demographic.attr_age,
-#         attr_income=chosen_demographic.attr_income,
-#     )
-#     return user
 
 
 def sample_users(campaigns, num_users):
@@ -193,7 +135,6 @@ def generate_campaign(current_day=0):
     """
     campaign = copy.deepcopy(random.choice(campaigns))
     reach_factor = random.choice([0.3, 0.5, 0.7])
-    # length = random.choice(list(range(0, min((last_day + 1) - current_day, 3))))
     length = random.choice(list(range(0, 3)))
     campaign.length = length
     campaign.reach = (length + 1) * reach_factor * campaign.average_users
@@ -250,10 +191,10 @@ def run_1_day(agents):
 
 
 def run_multi_day(agents, last_day=9):
-    ad_stats = []
     ad_stats_dfs = []
     campaign_stats = []
-    for current_day in range(0, last_day + 1):
+    for current_day in tqdm.tqdm(range(0, last_day + 1), desc="Day", leave=False):
+        ad_stats = []
         if current_day == 0:
             for agent in agents:
                 agent.reset()
@@ -292,7 +233,9 @@ def run_multi_day(agents, last_day=9):
                 agents[winning_agent_idx].add_campaign(campaign)
 
         bid_buckets = [agent.report_user_bids() for agent in agents]
-        for user in sample_users(campaigns, num_users=10_000):
+        for user in tqdm.tqdm(
+            sample_users(campaigns, num_users=10_000), desc="User", leave=False
+        ):
             bids = [bucket.bid(user) for bucket in bid_buckets]
             winning_agent_idx, price, stats = second_price_auction(bids)
             stats["demographic"] = user.demographic()
@@ -316,12 +259,12 @@ def run_multi_day(agents, last_day=9):
     assert (
         sum([len(a.active_campaigns) for a in agents]) == 0
     ), "No unresolved campaigns at auction close"
-    # return data in tidy form
-    # for agent in agents:
-    #    print(agent.name, agent.profit, agent.stats["profit"])
     return (
+        # Agent stats : List[Dict[*str, float]]
         [{"name": agent.name, **agent.stats} for agent in agents],
+        # Ad stats : List[pd.DataFrame[*str, float]]
         ad_stats_dfs,
+        # Campaign stats : List[Dict[*str, float]]
         campaign_stats,
     )
 
@@ -344,7 +287,10 @@ if __name__ == "__main__":
     if True:
         agents = get_all_tier1()
         agent_data, ad_bid_data, campaign_stats = zip(
-            *[run_multi_day(agents) for _ in range(1000)]
+            *[
+                run_multi_day(agents)
+                for _ in tqdm.tqdm(range(10), desc="Game", leave=False)
+            ]
         )
         agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))
         agent_df.to_csv("agent.csv", index=False)

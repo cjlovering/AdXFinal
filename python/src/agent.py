@@ -172,10 +172,13 @@ class Tier1Agent(Agent):
 
 
 class AgentV0(Agent):
-    def __init__(self, name, ad_bid_shade=0.99, ad_limit_shade=0.85):
+    def __init__(
+        self, name, ad_bid_shade=0.99, ad_limit_shade=0.85, campaign_bid_factor=0.2
+    ):
         super(AgentV0, self).__init__(name)
         self.ad_bid_shade = ad_bid_shade
         self.ad_limit_shade = ad_limit_shade
+        self.campaign_bid_factor = campaign_bid_factor
 
     def report_user_bids(self):
         campaign_to_bid = {}
@@ -185,9 +188,6 @@ class AgentV0(Agent):
                 0.1, (self.ad_bid_shade * campaign.budget / campaign.reach)
             )
             campaign_to_limit[campaign] = self.ad_limit_shade * campaign.budget
-        # TODO: We should limit both the sub-campaigns and the sup-campaigns.
-        # TODO: We should switch the BidBucket to work with marketsegments, not
-        # campaigns.
         return BidBucket(self, campaign_to_bid, campaign_to_limit)
 
     def report_campaign_bids(self, campaigns):
@@ -195,5 +195,5 @@ class AgentV0(Agent):
         """
         campaign_to_bid = {}
         for campaign in campaigns:
-            campaign_to_bid[campaign] = 0.2 * campaign.reach
+            campaign_to_bid[campaign] = self.campaign_bid_factor * campaign.reach
         return campaign_to_bid
