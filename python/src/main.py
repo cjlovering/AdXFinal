@@ -282,7 +282,9 @@ def run_multi_day(agents, last_day=9):
             bid_stats.append(stats)
         # Average
         bid_stats_dfs.append(
-            pd.DataFrame(bid_stats).groupby(["demographic", "day"]).mean()
+            pd.DataFrame(bid_stats)
+            .groupby(["demographic", "day"], as_index=False)
+            .mean()
         )
         for a in agents:
             a.end_of_day(current_day)
@@ -313,9 +315,10 @@ if __name__ == "__main__":
         ad_bid_df.to_csv("bid.csv", index=False)
         print(ad_bid_df.groupby("demographic").mean())
         print(ad_bid_df.drop("demographic", axis=1).mean())
+
     if True:
-        agents = get_all_random()
-        agent_data, ad_bid_data = zip(*[run_multi_day(agents) for _ in range(10)])
+        agents = get_all_tier1()
+        agent_data, ad_bid_data = zip(*[run_multi_day(agents) for _ in range(100)])
         agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))
         agent_df.to_csv("agent.csv", index=False)
         profit_df = agent_df[["name", "profit"]]

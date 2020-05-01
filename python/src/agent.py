@@ -151,10 +151,24 @@ class Tier1Agent(Agent):
         campaign_to_bid = {}
         campaign_to_limit = {}
         for campaign in self.active_campaigns:
-            campaign_to_bid[campaign] = max(0.1, campaign.budget / campaign.reach)
-            campaign_to_limit[campaign] = campaign.budget
+            campaign_to_bid[campaign] = max(
+                0.1,
+                (campaign.budget - campaign.cost)
+                / (campaign.reach - campaign.matching_impressions),
+            )
+            campaign_to_limit[campaign] = max(1, campaign.budget - campaign.cost)
         # TODO: We should limit both the sub-campaigns and the sup-campaigns.
         return BidBucket(self, campaign_to_bid, campaign_to_limit)
+
+    def report_campaign_bids(self, campaigns):
+        """Build a BidBucket for new campaigns.
+        """
+        campaign_to_bid = {}
+        for campaign in campaigns:
+            campaign_to_bid[campaign] = random.uniform(
+                0.1 * campaign.reach, campaign.reach
+            )
+        return campaign_to_bid
 
 
 class AgentV0(Agent):
@@ -175,3 +189,11 @@ class AgentV0(Agent):
         # TODO: We should switch the BidBucket to work with marketsegments, not
         # campaigns.
         return BidBucket(self, campaign_to_bid, campaign_to_limit)
+
+    def report_campaign_bids(self, campaigns):
+        """Build a BidBucket for new campaigns.
+        """
+        campaign_to_bid = {}
+        for campaign in campaigns:
+            campaign_to_bid[campaign] = 0.2 * campaign.reach
+        return campaign_to_bid
