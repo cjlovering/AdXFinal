@@ -272,7 +272,7 @@ def run_multi_day(agents, last_day=9):
 if __name__ == "__main__":
     if False:
         agents = get_all_random()
-        agent_data, ad_bid_data = zip(*[run_1_day(agents) for _ in range(10)])
+        agent_data, ad_bid_data = zip(*[run_1_day(agents) for _ in range(100)])
         agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))
         agent_df.to_csv("agent.csv", index=False)
         profit_df = agent_df[["name", "profit"]]
@@ -285,11 +285,11 @@ if __name__ == "__main__":
         print(ad_bid_df.drop("demographic", axis=1).mean())
 
     if True:
-        agents = get_all_tier1()
+        agents = get_one_AgentV0()
         agent_data, ad_bid_data, campaign_stats = zip(
             *[
                 run_multi_day(agents)
-                for _ in tqdm.tqdm(range(10), desc="Game", leave=False)
+                for _ in tqdm.tqdm(range(100), desc="Game", leave=False)
             ]
         )
         agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))

@@ -185,9 +185,14 @@ class AgentV0(Agent):
         campaign_to_limit = {}
         for campaign in self.active_campaigns:
             campaign_to_bid[campaign] = max(
-                0.1, (self.ad_bid_shade * campaign.budget / campaign.reach)
+                0.1,
+                self.ad_bid_shade
+                * (campaign.budget - campaign.cost)
+                / (campaign.reach - campaign.matching_impressions),
             )
-            campaign_to_limit[campaign] = self.ad_limit_shade * campaign.budget
+            campaign_to_limit[campaign] = self.ad_limit_shade * (
+                campaign.budget - campaign.cost
+            )
         return BidBucket(self, campaign_to_bid, campaign_to_limit)
 
     def report_campaign_bids(self, campaigns):
