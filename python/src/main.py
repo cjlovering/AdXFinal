@@ -84,14 +84,22 @@ def reverse_auction(bids, quality_scores, reach):
         price_to_pay: second highest bid
     """
     assert all([(bid == 0 or bid >= 0.1 * reach) for bid in bids])
-    if sum(bids) == max(bids):  # Everyone bid 0 except for one player
-        winning_bidder = bids.index(max(bids))
+    max_bid = max(bids)
+    if sum(bids) == max_bid:  # Everyone bid 0 except for one player
+        winning_bidder = bids.index(max_bid)
         budget = (
             reach
             / (1.0 * sum(sorted(quality_scores)[0:3]) / min(len(quality_scores), 3))
             * quality_scores[winning_bidder]
         )
-        return winning_bidder, budget
+        stats = {
+            "default_win": 1.0,
+            "q_avg": np.mean(quality_scores),
+            "q_win": quality_scores[winning_bidder],
+            "winning_bid": max_bid,
+            "budget": budget,
+        }
+        return winning_bidder, budget, stats
     else:
         # effective_bids = [bids[i] * quality_scores[i] for i in range(0, len(bids))]
 
@@ -118,7 +126,15 @@ def reverse_auction(bids, quality_scores, reach):
         winner = shuffled_order[order[0]]
         second = shuffled_order[order[1]]
         budget = effective_bids[second] * quality_scores[winner]
-        return winner, budget
+
+        stats = {
+            "default_win": 0.0,
+            "q_avg": np.mean(quality_scores),
+            "q_win": quality_scores[winner],
+            "winning_bid": bids[winner],
+            "budget": budget,
+        }
+        return winner, budget, stats
 
     #     lowest_bid = min(effective_bids)
     #     all_lowest_bidders = [
@@ -264,7 +280,7 @@ def run_multi_day(agents, last_day=9):
                     campaign_to_bid[campaign] for campaign_to_bid in campaign_to_bids
                 ]
                 quality_scores = [agent.quality_score for agent in agents]
-                winning_agent_idx, budget = reverse_auction(
+                winning_agent_idx, budget, stats = reverse_auction(
                     bids, quality_scores, campaign.reach
                 )
                 campaign.budget = budget
@@ -318,7 +334,7 @@ if __name__ == "__main__":
 
     if True:
         agents = get_all_tier1()
-        agent_data, ad_bid_data = zip(*[run_multi_day(agents) for _ in range(100)])
+        agent_data, ad_bid_data = zip(*[run_multi_day(agents) for _ in range(1000)])
         agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))
         agent_df.to_csv("agent.csv", index=False)
         profit_df = agent_df[["name", "profit"]]
