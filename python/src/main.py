@@ -8,6 +8,7 @@ import pandas as pd
 
 from agent import RandomAgent, Tier1Agent, AgentV0
 from campaign import Campaign, User, campaigns
+from deap import creator, base, tools, algorithms
 
 
 def second_price_auction(bids):
@@ -190,6 +191,22 @@ def run_1_day(agents):
     return [{"name": agent.name, **agent.stats} for agent in agents], ad_stats
 
 
+def runGenAlg(weights):
+    ad_bid_shade, ad_limit_shade, campaign_bid_factor= weights
+    agents = [Tier1Agent("Tier1Agent_{}".format(i)) for i in range(0, 9)] + [
+        AgentV0("AgentV0", ad_bid_shade, ad_limit_shade, campaign_bid_factor)
+    ]
+    agent_data, ad_bid_data, campaign_stats = zip(
+        *[
+            run_multi_day(agents)
+            for _ in tqdm.tqdm(range(10), desc="Game", leave=False)
+        ]
+    )
+    for agent in agent_data[0]:
+        if agent["name"] == "AgentV0":
+            profit = agent["profit"]
+            return profit,
+
 def run_multi_day(agents, last_day=9):
     ad_stats_dfs = []
     campaign_stats = []
@@ -286,6 +303,51 @@ if __name__ == "__main__":
 
     if True:
         agents = get_one_AgentV0()
+        agent_data, ad_bid_data, campaign_stats = zip(
+            *[
+                run_multi_day(agents)
+                for _ in tqdm.tqdm(range(100), desc="Game", leave=False)
+            ]
+        )
+        agent_df = pd.DataFrame(itertools.chain.from_iterable(agent_data))
+        agent_df.to_csv("agent.csv", index=False)
+        profit_df = agent_df[["name", "profit"]]
+        profit_df = profit_df.groupby("name").mean()
+        print(profit_df)
+
+        ad_bid_df = pd.concat(itertools.chain.from_iterable(ad_bid_data))
+        ad_bid_df.to_csv("bid.csv", index=False)
+        print(ad_bid_df.groupby("day").mean())
+
+        campaign_stats_df = pd.DataFrame(itertools.chain.from_iterable(campaign_stats))
+        campaign_stats_df.to_csv("campaign.csv", index=False)
+        print(campaign_stats_df.mean())
+    if False:
+        creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+        creator.create("Individual", list, fitness=creator.FitnessMax)
+        toolbox = base.Toolbox()
+
+        toolbox.register("attr_bool", random.random)
+        toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=3)
+        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+        toolbox.register("evaluate", runGenAlg)
+        toolbox.register("mate", tools.cxTwoPoint)
+        toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
+        toolbox.register("select", tools.selTournament, tournsize=3)
+        population = toolbox.population(n=10)
+        NGEN=20
+        for gen in range(NGEN):
+            offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
+            fits = toolbox.map(toolbox.evaluate, offspring)
+            for fit, ind in zip(fits, offspring):
+                ind.fitness.values = fit
+            population = toolbox.select(offspring, k=len(population))
+        top10 = tools.selBest(population, k=10)
+        print(top10)
+        ad_bid_shade, ad_limit_shade, campaign_bid_factor= top10[0]
+        agents = [Tier1Agent("Tier1Agent_{}".format(i)) for i in range(0, 9)] + [
+            AgentV0("AgentV0", ad_bid_shade, ad_limit_shade, campaign_bid_factor)
+        ]
         agent_data, ad_bid_data, campaign_stats = zip(
             *[
                 run_multi_day(agents)

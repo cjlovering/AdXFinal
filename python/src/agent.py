@@ -173,8 +173,8 @@ class Tier1Agent(Agent):
 
 class AgentV0(Agent):
     def __init__(
-        self, name, ad_bid_shade=0.99, ad_limit_shade=0.85, campaign_bid_factor=0.2
-    ):
+        self, name, ad_bid_shade=0.99, ad_limit_shade=0.85, campaign_bid_factor=0.2):
+        #GA settings: ad_bid_shade=0.6593952795509491, ad_limit_shade=0.42346267628259915, campaign_bid_factor=0.08600986302646996):#
         super(AgentV0, self).__init__(name)
         self.ad_bid_shade = ad_bid_shade
         self.ad_limit_shade = ad_limit_shade
@@ -188,7 +188,7 @@ class AgentV0(Agent):
                 0.1,
                 self.ad_bid_shade
                 * (campaign.budget - campaign.cost)
-                / (campaign.reach - campaign.matching_impressions),
+                / max(campaign.reach - campaign.matching_impressions, 1e-5),
             )
             campaign_to_limit[campaign] = self.ad_limit_shade * (
                 campaign.budget - campaign.cost
@@ -200,5 +200,5 @@ class AgentV0(Agent):
         """
         campaign_to_bid = {}
         for campaign in campaigns:
-            campaign_to_bid[campaign] = self.campaign_bid_factor * campaign.reach
+            campaign_to_bid[campaign] = max(self.campaign_bid_factor * campaign.reach, campaign.reach * .1)
         return campaign_to_bid
