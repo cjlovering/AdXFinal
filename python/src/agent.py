@@ -170,11 +170,36 @@ class Tier1Agent(Agent):
             )
         return campaign_to_bid
 
+class Strongarm(Agent):
+    def __init__(self):
+        super(Strongarm, self).__init__("strongarm")
+
+    def report_user_bids(self):
+        campaign_to_bid = {}
+        campaign_to_limit = {}
+        for campaign in self.active_campaigns:
+            if campaign.start_day < 4:
+                campaign_to_bid[campaign] = 1
+            else:
+                campaign_to_bid[campaign] = 1e-5
+            campaign_to_limit[campaign] = float("inf")
+        # TODO: We should limit both the sub-campaigns and the sup-campaigns.
+        return BidBucket(self, campaign_to_bid, campaign_to_limit)
+
+    def report_campaign_bids(self, campaigns):
+        """Build a BidBucket for new campaigns.
+        """
+        campaign_to_bid = {}
+        for campaign in campaigns:
+            campaign_to_bid[campaign] = 0.1 * campaign.reach
+        return campaign_to_bid
+
 
 class AgentV0(Agent):
     def __init__(
         self, name, ad_bid_shade=0.99, ad_limit_shade=0.85, campaign_bid_factor=0.2):
         #GA settings: ad_bid_shade=0.6593952795509491, ad_limit_shade=0.42346267628259915, campaign_bid_factor=0.08600986302646996):#
+        #0.8468177421095895, 0.43482644396012227, 0.06348266847786299
         super(AgentV0, self).__init__(name)
         self.ad_bid_shade = ad_bid_shade
         self.ad_limit_shade = ad_limit_shade

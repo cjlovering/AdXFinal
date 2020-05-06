@@ -6,7 +6,7 @@ import tqdm
 import numpy as np
 import pandas as pd
 
-from agent import RandomAgent, Tier1Agent, AgentV0
+from agent import RandomAgent, Tier1Agent, AgentV0, Strongarm
 from campaign import Campaign, User, campaigns
 from deap import creator, base, tools, algorithms
 
@@ -156,6 +156,11 @@ def get_one_tier1():
     ]
     return agents
 
+def get_one_strongarm():
+    agents = [Tier1Agent("Tier1Agent_{}".format(i)) for i in range(0, 9)] + [
+        Strongarm()
+    ]
+    return agents
 
 def get_all_tier1():
     agents = [Tier1Agent("Tier1Agent_{}".format(i)) for i in range(0, 10)]
@@ -302,7 +307,10 @@ if __name__ == "__main__":
         print(ad_bid_df.drop("demographic", axis=1).mean())
 
     if True:
-        agents = get_one_AgentV0()
+        if True:
+            agents = get_one_strongarm()#get_one_AgentV0()
+        if False:
+            agents = get_one_AgentV0()
         agent_data, ad_bid_data, campaign_stats = zip(
             *[
                 run_multi_day(agents)
@@ -332,16 +340,17 @@ if __name__ == "__main__":
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
         toolbox.register("evaluate", runGenAlg)
         toolbox.register("mate", tools.cxTwoPoint)
-        toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
-        toolbox.register("select", tools.selTournament, tournsize=3)
+        toolbox.register("mutate", tools.mutGaussian, mu = [.99, .85,.6], sigma = [.15,.15,.15],indpb=0.2)
+        toolbox.register("select", tools.selBest, k=3)
         population = toolbox.population(n=10)
         NGEN=20
-        for gen in range(NGEN):
+        for gen in tqdm.tqdm(range(NGEN), desc = "generations"):
             offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
             fits = toolbox.map(toolbox.evaluate, offspring)
             for fit, ind in zip(fits, offspring):
                 ind.fitness.values = fit
             population = toolbox.select(offspring, k=len(population))
+            print(population)
         top10 = tools.selBest(population, k=10)
         print(top10)
         ad_bid_shade, ad_limit_shade, campaign_bid_factor= top10[0]
